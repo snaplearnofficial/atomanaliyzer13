@@ -40,9 +40,9 @@ const authMiddleware = (req, res, next) => {
 // Login or register on-the-fly
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Gmail and password are required.' });
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Gmail address is required.' });
     }
     const cleanEmail = email.toLowerCase().trim();
 
@@ -52,7 +52,6 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) {
       // Register new user on-the-fly
       user = {
-        password: password, // simple password storage for development
         isPremium: false,
         subscriptionType: 'free',
         invitedMembers: [],
@@ -61,16 +60,6 @@ app.post('/api/auth/login', async (req, res) => {
       };
       user = await saveUser(cleanEmail, user);
       isNew = true;
-    } else {
-      // Complete registration if invited
-      if (user.isPendingRegistration) {
-        user.password = password;
-        delete user.isPendingRegistration;
-        user = await saveUser(cleanEmail, user);
-        isNew = true;
-      } else if (user.password !== password) {
-        return res.status(401).json({ error: 'Incorrect password for this Gmail account.' });
-      }
     }
 
     if (user.isPremium && !user.subscriptionType) {
@@ -167,11 +156,9 @@ app.post('/api/subscription/add-member', authMiddleware, async (req, res) => {
       await saveUser(cleanMember, memberUser);
     } else {
       await saveUser(cleanMember, {
-        password: '',
         isPremium: true,
         subscriptionType: 'invited',
         invitedBy: req.userEmail,
-        isPendingRegistration: true,
         createdAt: new Date().toISOString()
       });
     }
